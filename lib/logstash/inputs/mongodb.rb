@@ -73,6 +73,9 @@ class LogStash::Inputs::MongoDB < LogStash::Inputs::Base
   # The default, `1`, means send a message every second.
   config :interval, :validate => :number, :default => 1
 
+  # Use collection name as a regex or not. Useful for logs vs. non-logs use case
+  config :expand_collection_name_regex, :validate => :boolean, :default => true
+
   SINCE_TABLE = :since_table
 
   public
@@ -133,6 +136,15 @@ class LogStash::Inputs::MongoDB < LogStash::Inputs::Base
 
   public
   def get_collection_names(mongodb, collection)
+    if !expand_collection_name_regex
+      if @mongodb.collection_names.include?(collection)
+        return [collection]
+      else
+        @logger.error("Could not find collection #{collection} in mongo")
+        return []
+      end
+    end
+
     collection_names = []
     @mongodb.collection_names.each do |coll|
       if /#{collection}/ =~ coll
